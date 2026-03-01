@@ -23,6 +23,7 @@ let cloudSyncEnabled = false;
 let cloudId = null;
 let syncDebounceTimer = null;
 let localDirty = false;
+let isSyncing = false;
 
 async function cloudLoad(id) {
   try {
@@ -89,11 +90,14 @@ async function syncFromCloud() {
     const cloudHash = stateHash(cloudData);
     const localHash = stateHash(state);
     if (cloudHash !== localHash) {
+      isSyncing = true;
       Object.assign(state, cloudData);
       state.people.forEach(p => ensurePersonScheduleFromTemplate(p));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       lastSyncHash = cloudHash;
       render();
+      isSyncing = false;
+      localDirty = false;
       const indicator = document.getElementById("syncIndicator");
       if (indicator) { indicator.textContent = "🔄"; setTimeout(() => { indicator.textContent = "☁️"; }, 1500); }
     }
@@ -128,10 +132,13 @@ function initPasswordGate() {
     // Silently sync from cloud in background
     cloudLoad(cloudId).then(cloudData => {
       if (cloudData && cloudData.people && cloudData.people.length > 0) {
+        isSyncing = true;
         Object.assign(state, cloudData);
         state.people.forEach(p => ensurePersonScheduleFromTemplate(p));
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         render();
+        isSyncing = false;
+        localDirty = false;
       }
     });
     return;
@@ -149,9 +156,12 @@ function initPasswordGate() {
       const cloudData = await cloudLoad(cloudId);
       if (cloudData && cloudData.people && cloudData.people.length > 0) {
         // Cloud has data — use it (cloud is source of truth)
+        isSyncing = true;
         Object.assign(state, cloudData);
         state.people.forEach(p => ensurePersonScheduleFromTemplate(p));
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        isSyncing = false;
+        localDirty = false;
       } else if (!cloudData || !cloudData.people) {
         // No cloud data yet — push local to cloud
         const localRaw = localStorage.getItem(STORAGE_KEY);
@@ -251,6 +261,7 @@ function loadState(){
 
 function saveState(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (isSyncing) return; // Don't push back to cloud during sync
   localDirty = true;
   debouncedCloudSave();
 }
