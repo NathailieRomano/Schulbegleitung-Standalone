@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Schulbegleitung • Personalmanager</title>
+  <meta name="theme-color" content="#0b1220" />
+  <link rel="manifest" href="./manifest.json" />
+  <script>
+    if (location.protocol === 'file:') {
+      const m = document.querySelector('link[rel="manifest"]');
+      if (m) m.remove();
+    }
+  </script>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="apple-touch-icon" href="./assets/icon-192.png" />
+</head>
+<body>
+  <!-- Password Gate -->
+  <div id="passwordGate" class="password-gate">
+    <div class="password-card">
+      <div class="password-logo">🔐</div>
+      <h2>Schulbegleitung Personalmanager</h2>
+      <p>Bitte Passwort eingeben</p>
+      <input type="password" id="passwordInput" class="password-input" placeholder="Passwort" autocomplete="off" />
+      <button id="passwordSubmit" class="btn password-btn">Anmelden</button>
+      <p id="passwordError" class="password-error hidden">Falsches Passwort</p>
+    </div>
+  </div>
+
+  <div id="app" class="app hidden">
+    <header class="topbar" role="banner" aria-label="Steuerleiste">
+      <div class="brand" tabindex="0" aria-label="App Titel">
+        <span class="logo" aria-hidden="true">SB</span>
+        <div class="brand-text">
+          <div class="brand-title">Schulbegleitung</div>
+          <div class="brand-sub">Personalmanager</div>
+        </div>
+      </div>
+
+      <div class="datetime" aria-label="Datum und Uhrzeit">
+        <div class="dt-row">
+          <label class="sr-only" for="datePicker">Datum</label>
+          <input id="datePicker" class="date-picker" type="date" />
+          <div id="weekday" class="weekday" aria-live="polite"></div>
+        </div>
+        <div id="clock" class="clock" aria-live="polite"></div>
+      </div>
+
+      <div class="actions" role="group" aria-label="Aktionen">
+        <button id="btnAdd" class="btn">+ Name</button>
+        <button id="btnRemove" class="btn btn-ghost" title="Ausgewählten Namen entfernen">– Entfernen</button>
+
+        <div class="sep" aria-hidden="true"></div>
+
+        <button id="btnMarkAvailable" class="btn btn-good" title="Ausgewählte Person als verfügbar markieren (V)">Verfügbar</button>
+        <button id="btnMarkAbsent" class="btn btn-bad" title="Ausgewählte Person als abwesend markieren (A)">Abwesend</button>
+        <button id="btnClearMark" class="btn btn-ghost" title="Markierung entfernen (U)">Markierung entfernen</button>
+
+        <div class="sep" aria-hidden="true"></div>
+
+        <button id="btnResetAllMarks" class="btn btn-ghost" title="Alle Highlights zurücksetzen">Alle zurücksetzen</button>
+        <button id="btnPrint" class="btn btn-ghost" title="Vertretungsplan drucken">🖨️ Drucken</button>
+        <button id="btnOptions" class="btn btn-ghost right" aria-haspopup="dialog" title="Optionen">Optionen ⚙</button>
+      </div>
+    </header>
+
+    <main class="main" role="main">
+      <aside class="sidebar" aria-label="Namensliste">
+        <div class="sidebar-header">
+          <div class="sidebar-title">Schulbegleiter</div>
+          <input id="searchNames" class="search" type="search" placeholder="Suchen…" aria-label="Namen suchen" />
+        </div>
+        <div id="nameList" class="name-list" role="listbox" aria-label="Namenliste"></div>
+
+        <div class="sidebar-footer">
+          <div class="hint">
+            <div><kbd>↑</kbd><kbd>↓</kbd> Auswahl</div>
+            <div><kbd>V</kbd> verfügbar · <kbd>A</kbd> abwesend · <kbd>U</kbd> unmark</div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="content" aria-label="Stundenraster">
+        <div class="content-header">
+          <div class="content-tabs" role="tablist" aria-label="Ansichten">
+            <button id="tabDashboard" class="tab active" role="tab" aria-selected="true">📊 Dashboard</button>
+            <button id="tabAbsent" class="tab" role="tab" aria-selected="false">Abwesende</button>
+            <button id="tabEdit" class="tab" role="tab" aria-selected="false">Raster</button>
+            <button id="tabLog" class="tab" role="tab" aria-selected="false">Log</button>
+          </div>
+          <div class="content-tools">
+            <label class="filter-label" id="filterUnassignedLabel">
+              <input type="checkbox" id="filterUnassigned" /> Nur unbesetzte
+            </label>
+            <button id="btnEditStandard" class="btn btn-ghost" aria-haspopup="dialog" title="Standardraster bearbeiten">Standardraster</button>
+          </div>
+        </div>
+
+        <div id="viewDashboard" class="view"></div>
+        <div id="viewAbsent" class="view hidden"></div>
+        <div id="viewEdit" class="view hidden"></div>
+        <div id="viewLog" class="view hidden"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div id="modalBackdrop" class="backdrop hidden" aria-hidden="true"></div>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head">
+      <div id="modalTitle" class="modal-title">Modal</div>
+      <button id="modalClose" class="btn btn-ghost" aria-label="Schließen">✕</button>
+    </div>
+    <div id="modalBody" class="modal-body"></div>
+    <div id="modalFoot" class="modal-foot"></div>
+  </div>
+
+  </div>
+
+  <!-- Print-specific styles -->
+  <style id="printStyles">
+    @media print {
+      body * { visibility: hidden; }
+      #printArea, #printArea * { visibility: visible; }
+      #printArea { 
+        position: absolute; 
+        left: 0; 
+        top: 0; 
+        width: 100%;
+        background: white;
+        color: black;
+        padding: 20px;
+      }
+      #printArea table { border-collapse: collapse; width: 100%; }
+      #printArea th, #printArea td { border: 1px solid #333; padding: 8px; text-align: left; }
+      #printArea th { background: #eee; }
+      #printArea .print-header { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+      #printArea .print-date { margin-bottom: 20px; color: #666; }
+      #printArea .warning { color: red; font-weight: bold; }
+    }
+  </style>
+  <div id="printArea" style="display:none;"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
