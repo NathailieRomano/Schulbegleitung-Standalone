@@ -24,15 +24,19 @@ let cloudId = null;
 let syncDebounceTimer = null;
 let localDirty = false;
 let isSyncing = false;
+let lastLocalChangeTime = 0;
+let lastCloudUpdateTime = "";
 
 async function cloudLoad(id) {
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/schulbegleitung_data?id=eq.${encodeURIComponent(id)}&select=data`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/schulbegleitung_data?id=eq.${encodeURIComponent(id)}&select=data,updated_at`, {
       headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
     });
     if (!res.ok) return null;
     const rows = await res.json();
-    return rows.length > 0 ? rows[0].data : null;
+    if (rows.length === 0) return null;
+    lastCloudUpdateTime = rows[0].updated_at || "";
+    return rows[0].data;
   } catch(e) {
     console.warn("Cloud load failed:", e);
     return null;
@@ -84,9 +88,14 @@ function stateHash(s) {
 async function syncFromCloud() {
   if (!cloudSyncEnabled || !cloudId) return;
   if (localDirty) return; // Don't overwrite pending local changes
+  // Don't sync if user changed something in the last 5 seconds (debounce safety)
+  if (Date.now() - lastLocalChangeTime < 5000) return;
   try {
+    const prevCloudTime = lastCloudUpdateTime;
     const cloudData = await cloudLoad(cloudId);
     if (!cloudData || !cloudData.people) return;
+    // Only apply if cloud data actually changed (new updated_at)
+    if (lastCloudUpdateTime === prevCloudTime && prevCloudTime !== "") return;
     const cloudHash = stateHash(cloudData);
     const localHash = stateHash(state);
     if (cloudHash !== localHash) {
@@ -263,6 +272,7 @@ function saveState(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   if (isSyncing) return; // Don't push back to cloud during sync
   localDirty = true;
+  lastLocalChangeTime = Date.now();
   debouncedCloudSave();
 }
 
