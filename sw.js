@@ -1,5 +1,5 @@
-// Simple offline-first service worker
-const CACHE = "sbpm-cache-v10";
+// Network-first service worker (online = fresh, offline = cache)
+const CACHE = "sbpm-cache-v11";
 const ASSETS = [
   "./",
   "./index.html",
@@ -24,15 +24,13 @@ self.addEventListener("activate", (event)=>{
 });
 
 self.addEventListener("fetch", (event)=>{
-  const req = event.request;
   event.respondWith(
-    caches.match(req).then(cached=>{
-      if(cached) return cached;
-      return fetch(req).then(res=>{
-        const copy = res.clone();
-        caches.open(CACHE).then(cache=>cache.put(req, copy)).catch(()=>{});
-        return res;
-      }).catch(()=>cached);
+    fetch(event.request).then(res=>{
+      const copy = res.clone();
+      caches.open(CACHE).then(cache=>cache.put(event.request, copy)).catch(()=>{});
+      return res;
+    }).catch(()=>{
+      return caches.match(event.request);
     })
   );
 });
