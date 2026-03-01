@@ -22,6 +22,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_EEsqqG0d-V7vknw44WENVA_ldta7hhW";
 let cloudSyncEnabled = false;
 let cloudId = null;
 let syncDebounceTimer = null;
+let localDirty = false;
 
 async function cloudLoad(id) {
   try {
@@ -61,6 +62,7 @@ function debouncedCloudSave() {
   clearTimeout(syncDebounceTimer);
   syncDebounceTimer = setTimeout(async () => {
     const ok = await cloudSave(cloudId, state);
+    if (ok) localDirty = false;
     const indicator = document.getElementById("syncIndicator");
     if (indicator) {
       indicator.textContent = ok ? "☁️" : "⚠️";
@@ -80,6 +82,7 @@ function stateHash(s) {
 
 async function syncFromCloud() {
   if (!cloudSyncEnabled || !cloudId) return;
+  if (localDirty) return; // Don't overwrite pending local changes
   try {
     const cloudData = await cloudLoad(cloudId);
     if (!cloudData || !cloudData.people) return;
@@ -248,6 +251,7 @@ function loadState(){
 
 function saveState(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localDirty = true;
   debouncedCloudSave();
 }
 
