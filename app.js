@@ -87,6 +87,15 @@ function initPasswordGate() {
     cloudSyncEnabled = true;
     gate.classList.add("hidden");
     app.classList.remove("hidden");
+    // Silently sync from cloud in background
+    cloudLoad(cloudId).then(cloudData => {
+      if (cloudData && cloudData.people && cloudData.people.length > 0) {
+        Object.assign(state, cloudData);
+        state.people.forEach(p => ensurePersonScheduleFromTemplate(p));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        render();
+      }
+    });
     return;
   }
 
@@ -100,22 +109,19 @@ function initPasswordGate() {
       submit.disabled = true;
       submit.textContent = "☁️ Lade Daten...";
       const cloudData = await cloudLoad(cloudId);
-      if (cloudData && cloudData.people) {
-        // Cloud has data — check if newer
-        const localRaw = localStorage.getItem(STORAGE_KEY);
-        const localState = localRaw ? JSON.parse(localRaw) : null;
-        if (!localState || !localState.people || localState.people.length === 0) {
-          // No local data, use cloud
-          Object.assign(state, cloudData);
-          saveState();
-        }
-      } else {
+      if (cloudData && cloudData.people && cloudData.people.length > 0) {
+        // Cloud has data — use it (cloud is source of truth)
+        Object.assign(state, cloudData);
+        state.people.forEach(p => ensurePersonScheduleFromTemplate(p));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } else if (!cloudData || !cloudData.people) {
         // No cloud data yet — push local to cloud
         const localRaw = localStorage.getItem(STORAGE_KEY);
         if (localRaw) await cloudSave(cloudId, JSON.parse(localRaw));
       }
       gate.classList.add("hidden");
       app.classList.remove("hidden");
+      render();
     } else {
       error.classList.remove("hidden");
       input.value = "";
