@@ -2470,9 +2470,18 @@ setInterval(renderDatetime, 1000);
 if(!state.selectedPersonId && state.people[0]) state.selectedPersonId = state.people[0].id;
 render();
 
-// Register service worker for offline usage
+// Register service worker with forced update check
 if("serviceWorker" in navigator){
-  window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  window.addEventListener("load", async ()=>{
+    try {
+      const reg = await navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
+      // Force check for updates
+      reg.update().catch(()=>{});
+      // Auto-reload when new SW activates
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", ()=>{
+        if (!refreshing) { refreshing = true; window.location.reload(); }
+      });
+    } catch(e) {}
   });
 }

@@ -1,5 +1,5 @@
 // Network-first service worker (online = fresh, offline = cache)
-const CACHE = "sbpm-cache-v11";
+const CACHE = "sbpm-cache-v12";
 const ASSETS = [
   "./",
   "./index.html",
