@@ -30,11 +30,17 @@
 
   <div id="app" class="app hidden">
     <header class="topbar" role="banner" aria-label="Steuerleiste">
+      <!-- Feedback Section -->
+      <div class="feedback-section" id="feedbackSection">
+        <button class="feedback-toggle" id="feedbackToggle" title="Änderungswunsch">💡</button>
+      </div>
+      
       <div class="brand" tabindex="0" aria-label="App Titel">
         <span class="logo" aria-hidden="true">SB</span>
         <div class="brand-text">
           <div class="brand-title">Schulbegleitung</div>
           <div class="brand-sub">Personalmanager</div>
+          <span id="syncIndicator" title="Cloud-Sync" style="font-size:12px;margin-left:6px">☁️</span>
         </div>
       </div>
 
@@ -117,6 +123,30 @@
     <div id="modalFoot" class="modal-foot"></div>
   </div>
 
+  <!-- Feedback Modal -->
+  <div class="feedback-overlay hidden" id="feedbackOverlay">
+    <div class="feedback-panel" id="feedbackPanel">
+      <div class="feedback-header">
+        <span>💡 Änderungswunsch / Feedback</span>
+        <button class="feedback-close" id="feedbackClose">×</button>
+      </div>
+      <div class="feedback-draft-hint hidden" id="feedbackDraftHint">📝 Entwurf wird automatisch gespeichert</div>
+      <textarea id="feedbackText" class="feedback-textarea" placeholder="Beschreibe deinen Änderungswunsch für die App...
+
+Beispiele:
+• &quot;Die Tabelle sollte nach Namen sortierbar sein&quot;
+• &quot;Bitte einen Dark Mode hinzufügen&quot;
+• &quot;Bug: Beim Speichern geht XY verloren&quot;
+
+Dein Text wird lokal gespeichert — du kannst das Fenster schliessen und später weiterschreiben."></textarea>
+      <div class="feedback-actions">
+        <button class="btn feedback-save" id="feedbackSave">📤 Feedback absenden</button>
+      </div>
+      <div class="feedback-status hidden" id="feedbackStatus">✅ Gesendet!</div>
+      <div class="feedback-changelog" id="feedbackChangelog">
+        <small>📋 Letzte Änderung: 03.02.2026 — Datenpersistenz mit Datum, Import-Funktion, "Kind da" Option, dauerhafte Stunden-Zuweisungen, Arbeitsminuten-Anzeige</small>
+      </div>
+    </div>
   </div>
 
   <!-- Print-specific styles -->

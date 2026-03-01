@@ -14,6 +14,61 @@
    - Dauerhafte Stunden-Zuweisung an andere Personen
 */
 
+// ===== SUPABASE CONFIG (Cloud Sync) =====
+const SUPABASE_URL = "https://aepeardhempzfqczifca.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_EEsqqG0d-V7vknw44WENVA_ldta7hhW";
+
+// ===== CLOUD SYNC =====
+let cloudSyncEnabled = false;
+let cloudId = null;
+let syncDebounceTimer = null;
+
+async function cloudLoad(id) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/schulbegleitung_data?id=eq.${encodeURIComponent(id)}&select=data`, {
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+    });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows.length > 0 ? rows[0].data : null;
+  } catch(e) {
+    console.warn("Cloud load failed:", e);
+    return null;
+  }
+}
+
+async function cloudSave(id, data) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/schulbegleitung_data`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+      },
+      body: JSON.stringify({ id, data, updated_at: new Date().toISOString() })
+    });
+    return res.ok;
+  } catch(e) {
+    console.warn("Cloud save failed:", e);
+    return false;
+  }
+}
+
+function debouncedCloudSave() {
+  if (!cloudSyncEnabled || !cloudId) return;
+  clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(async () => {
+    const ok = await cloudSave(cloudId, state);
+    const indicator = document.getElementById("syncIndicator");
+    if (indicator) {
+      indicator.textContent = ok ? "☁️" : "⚠️";
+      indicator.title = ok ? "Cloud-Sync aktiv" : "Sync fehlgeschlagen";
+      if (ok) { setTimeout(() => { indicator.textContent = "☁️"; }, 1500); }
+    }
+  }, 2000);
+}
 
 // ===== PASSWORD GATE =====
 const APP_PASSWORD = "RabenNathan26";
@@ -28,14 +83,37 @@ function initPasswordGate() {
 
   // Check if already authenticated this session
   if (sessionStorage.getItem(PASSWORD_STORAGE_KEY) === "true") {
+    cloudId = APP_PASSWORD;
+    cloudSyncEnabled = true;
     gate.classList.add("hidden");
     app.classList.remove("hidden");
     return;
   }
 
-  const checkPassword = () => {
-    if (input.value === APP_PASSWORD) {
+  const checkPassword = async () => {
+    const pw = input.value.trim();
+    if (pw === APP_PASSWORD) {
       sessionStorage.setItem(PASSWORD_STORAGE_KEY, "true");
+      cloudId = pw;
+      cloudSyncEnabled = true;
+      // Try loading from cloud
+      submit.disabled = true;
+      submit.textContent = "☁️ Lade Daten...";
+      const cloudData = await cloudLoad(cloudId);
+      if (cloudData && cloudData.people) {
+        // Cloud has data — check if newer
+        const localRaw = localStorage.getItem(STORAGE_KEY);
+        const localState = localRaw ? JSON.parse(localRaw) : null;
+        if (!localState || !localState.people || localState.people.length === 0) {
+          // No local data, use cloud
+          Object.assign(state, cloudData);
+          saveState();
+        }
+      } else {
+        // No cloud data yet — push local to cloud
+        const localRaw = localStorage.getItem(STORAGE_KEY);
+        if (localRaw) await cloudSave(cloudId, JSON.parse(localRaw));
+      }
       gate.classList.add("hidden");
       app.classList.remove("hidden");
     } else {
@@ -129,6 +207,7 @@ function loadState(){
 
 function saveState(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  debouncedCloudSave();
 }
 
 function log(action, details){
