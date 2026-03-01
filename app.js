@@ -70,6 +70,41 @@ function debouncedCloudSave() {
   }, 2000);
 }
 
+let lastSyncHash = "";
+function stateHash(s) {
+  const key = JSON.stringify({ p: s.people, m: s.marks, s: s.substitutions, t: s.template, se: s.settings });
+  let h = 0;
+  for (let i = 0; i < key.length; i++) { h = ((h << 5) - h + key.charCodeAt(i)) | 0; }
+  return String(h);
+}
+
+async function syncFromCloud() {
+  if (!cloudSyncEnabled || !cloudId) return;
+  try {
+    const cloudData = await cloudLoad(cloudId);
+    if (!cloudData || !cloudData.people) return;
+    const cloudHash = stateHash(cloudData);
+    const localHash = stateHash(state);
+    if (cloudHash !== localHash) {
+      Object.assign(state, cloudData);
+      state.people.forEach(p => ensurePersonScheduleFromTemplate(p));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      lastSyncHash = cloudHash;
+      render();
+      const indicator = document.getElementById("syncIndicator");
+      if (indicator) { indicator.textContent = "🔄"; setTimeout(() => { indicator.textContent = "☁️"; }, 1500); }
+    }
+  } catch(e) { console.warn("Sync from cloud failed:", e); }
+}
+
+// Auto-poll every 30s
+setInterval(() => { syncFromCloud(); }, 30000);
+
+// Sync when tab becomes visible
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") syncFromCloud();
+});
+
 // ===== PASSWORD GATE =====
 const APP_PASSWORD = "RabenNathan26";
 const PASSWORD_STORAGE_KEY = "sbpm_authenticated";

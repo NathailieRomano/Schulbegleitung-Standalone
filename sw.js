@@ -1,5 +1,5 @@
 // Simple offline-first service worker
-const CACHE = "sbpm-cache-v5";
+const CACHE = "sbpm-cache-v6";
 const ASSETS = [
   "./",
   "./index.html",
