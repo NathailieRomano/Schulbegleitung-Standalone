@@ -98,7 +98,7 @@ async function syncFromCloud() {
 }
 
 // Auto-poll every 30s
-setInterval(() => { syncFromCloud(); }, 30000);
+setInterval(() => { syncFromCloud(); }, 5000);
 
 // Sync when tab becomes visible
 document.addEventListener("visibilitychange", () => {
